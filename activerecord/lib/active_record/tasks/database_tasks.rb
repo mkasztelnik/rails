@@ -115,6 +115,7 @@ module ActiveRecord
       def create(configuration, *arguments)
         db_config = resolve_configuration(configuration)
         database_adapter_for(db_config, *arguments).create
+        load_schema_dump(db_config)
         $stdout.puts "Created database '#{db_config.database}'" if verbose?
       rescue DatabaseAlreadyExists
         $stderr.puts "Database '#{db_config.database}' already exists" if verbose?
@@ -666,14 +667,16 @@ module ActiveRecord
               retry
             end
 
-            unless database_already_initialized
-              schema_dump_path = schema_dump_path(db_config)
-              if schema_dump_path && File.exist?(schema_dump_path)
-                load_schema(db_config, ActiveRecord.schema_format, nil)
-              end
-            end
-
             !database_already_initialized
+          end
+        end
+
+        def load_schema_dump(db_config)
+          with_temporary_pool(db_config) do
+            schema_dump_path = schema_dump_path(db_config)
+            if schema_dump_path && File.exist?(schema_dump_path)
+              load_schema(db_config, ActiveRecord.schema_format, nil)
+            end
           end
         end
     end
